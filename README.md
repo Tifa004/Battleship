@@ -1,87 +1,97 @@
-# 📋 Todo List Project
+# 🚢 Battleship Game  
 
-A clean, simple, and interactive Todo List app built with **JavaScript**, **HTML**, and **CSS**. This app supports project management, inline editing, and local storage — all in a sleek, responsive interface.
-
----
-
-## ✨ Features
-
-### ✅ Core Functionality
-
-- **Project-based organization**  
-  Create, rename, and delete multiple projects, each with its own list of todos.
-
-- **Todo management**
-  - Add todos with:
-    - Title
-    - Due date
-    - Priority (Low, Medium, High)
-    - Notes
-  - Edit priority, due date, and notes inline
-  - Expand/collapse todo details
-  - Delete specific todos
-
-- **Persistent data**  
-  All data is stored in **Local Storage**, so your projects and todos remain after refreshing or closing the tab.
+A modern, interactive implementation of the classic **Battleship** strategy game built with **vanilla JavaScript, HTML, and CSS**.  
+Play against the computer in **1-Player mode** or challenge a friend in **2-Player mode**!  
 
 ---
 
-## 🌟 Notable Features & Highlights
+## ✨ Features  
 
-### 🗓️ Min Date on Date Input  
-Due dates **cannot be set in the past** — the `<input type="date">` uses today as the minimum.
+### 🎮 Game Modes  
+- **1-Player Mode**:  
+  - Play against an AI opponent.  
+  - AI places its ships randomly and makes attacks automatically.  
 
-```js
-todoDateInput.min = new Date().toISOString().split("T")[0];
+- **2-Player Mode**:  
+  - Both players set up their fleets.  
+  - Turn-based gameplay with hidden enemy boards.  
+  - Pass-and-play system with “Next” button for fairness.  
+
+---
+
+### 🛠️ Ship Placement  
+- Drag and drop ships onto your grid.  
+- Toggle orientation with the **Axis Button** (`Axis X` / `Axis Y`).  
+- Ships highlight possible placements:  
+  - **Blue glow** → valid placement.  
+  - **Red glow** → invalid placement.  
+- Ships cannot overlap or extend outside the grid.  
+
+---
+
+### ⚔️ Gameplay Mechanics  
+- Click on enemy tiles to launch attacks.  
+- Attacks show visually:  
+  - **Red tile** → Hit.  
+  - **Blue tile** → Miss.  
+- Ships track damage internally and sink when all coordinates are hit.  
+- The game ends when one player loses **all 5 ships**.  
+
+---
+
+### 🖥️ User Interface  
+- Sleek **space-themed design** with glowing highlights.  
+- Dynamic **hover states** for better UX.  
+- Each player’s board is labeled with their name.  
+- End-game screen showing:  
+  - 🛡️ **Attacks Evaded** (missed enemy shots).  
+  - 🚢 **Ships Lost**.  
+  - 👑 **Winner announcement**.  
+
+---
+
+## 📂 Project Structure  
+
+```plaintext
+├── index.html       # HTML entry point  
+├── styles.css       # CSS styles (layout, board, animations)  
+├── main.js          # Game logic (players, attacks, turns)  
+├── gameClasses.js   # Player & Gameboard class definitions  
+└── space.jpg        # Background image
 ```
 
-### 📝 Editable Project Descriptions  
-Clicking on a project description transforms it into an **inline textarea** that maintains the layout. Press `Enter` or unfocus to save changes.
+---
 
-- Maintains the same size and styling as the original element.
-- Styled to look seamless.
+## 🎮 How to Play  
 
-### ✏️ Inline Project Renaming  
-Projects can be renamed by clicking the pencil icon — editing is inline and keeps layout consistent (like a real app).
+1. **Place Your Ships**  
+   - Drag and drop ships onto your grid.  
+   - Use the **Axis button** to rotate ships (horizontal/vertical).  
 
-### 📌 Inline Todo Notes Editing  
-Each todo item has an editable notes section:
-- Click to edit
-- Press `Enter` to save
-- Uses a fallback placeholder ("Click to add notes…") if empty
+2. **Start the Game**  
+   - Once all ships are placed, the battle begins.  
 
-### 🔧 Priority Styling  
-Each todo's border color changes based on its priority level:
-- Green for Low
-- Orange for Medium
-- Red for High
+3. **Take Turns**  
+   - Click on enemy grid cells to fire.  
+   - A **hit** will mark part of a ship, a **miss** will be shown clearly.  
 
-### 🧠 Clean Module Pattern  
-JavaScript is organized using **Immediately Invoked Function Expressions (IIFEs)** to encapsulate state:
-- `createProject`: handles all logic for creating, updating, and deleting projects/todos
-- `storage`: saves and loads from localStorage
+4. **Sink Ships**  
+   - When all parts of a ship are hit, it is sunk.  
+
+5. **Win Condition**  
+   - The first player to sink all opponent ships wins the game.  
 
 ---
 
-
-## 🚀 Getting Started
-
-1. Clone or download this repo
-2. Open `index.html` in a browser
-3. Start adding projects and todos!
+## 🧩 Technologies Used  
+- **HTML5** – Structure & layout.  
+- **CSS3** – Responsive styling, hover effects, neon highlights.  
+- **JavaScript (ES6+)** – Game logic, drag-and-drop mechanics, AI behavior.  
 
 ---
 
-## 🧹 Suggestions for Improvement
-
-This project is great as-is, but you could consider adding:
-
-- Drag and drop todo reordering
-- Mark todos as completed
-- Due date filtering or sorting
-- Light/dark theme toggle
-- Backend support for persistence across devices
-
----
-
-Made with ❤️ and clean modular JavaScript.
+## 🏆 Future Improvements  
+- Smarter AI (target adjacent cells after a hit).  
+- Animations for sinking ships.  
+- Mobile-friendly controls.  
+- Sound effects and background music.  

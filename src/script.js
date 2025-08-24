@@ -1,451 +1,470 @@
 // Entry point CSS import
 import "./styles.css";
-import { format } from 'date-fns';
+import {Player} from './gameClasses'
 
-// ---------------- Storage Module ----------------
-const storage = (function () {
-  function saveProjects(projects) {
-    localStorage.setItem('projects', JSON.stringify(projects));
+const gameContainer=document.querySelector('.game-container');
+const boardContainer=document.querySelector('.board-container');
+const board=document.querySelector('.board');
+const single=document.getElementById('1-player');
+const double=document.getElementById('2-players');
+const inputs=document.querySelector('.player-inputs');
+const fightDiv = document.querySelector('.fight'); 
+let army={'Carrier':5,'Battleship':4,'Destroyer':3,'Submarine':3,'Patrolboat':2}; //Carrier5,Battleship4,destroyer3,submarine3,patrolboat2
+let inputDiv,ship,shipName,multi,startBtn,player1,player2,name,axisBtn,boardCopy;
+let isGameOver = false;
+
+function gameEnd(player,boardContainerSelector){
+  inputs.remove();
+  document.querySelector('.title').remove();
+  const endGame = document.createElement('div');
+  endGame.className='endGame';
+  const winner=document.createElement('div');
+  winner.className='winner';
+  winner.innerText=`${player.name} is the winner`;
+  const stats=document.createElement('div');
+  stats.className = 'stats';
+
+  stats.innerHTML = `
+    <div class="stat-number">Attacks Evaded: ${player.Gameboard.missedAttacks}</div>
+    <div class="stat-number">Ships Lost: ${player.Gameboard.lostShips}</div>
+  `;
+  endGame.appendChild(winner);
+  endGame.appendChild(stats);
+  gameContainer.appendChild(endGame);
+
+  const boardContainer = document.querySelector(boardContainerSelector);
+  boardContainer.remove();
+  if(player===player1){
+    document.querySelectorAll('.p1').forEach(btn=>btn.style.cursor='default');
+  } else{
+    document.querySelectorAll('.p2').forEach(btn=>btn.style.cursor='default');
+
   }
-
-  function loadProjects() {
-    const stored = localStorage.getItem('projects');
-    if (!stored) return;
-
-    const parsed = JSON.parse(stored);
-    for (const name in parsed) {
-      const project = parsed[name];
-      createProject.create(name, project.description, project.list);
-    }
-  }
-
-  function removeAll() {
-    localStorage.clear();
-  }
-
-  return { saveProjects, loadProjects, removeAll };
-})();
-
-// ---------------- Project Factory ----------------
-const createProject = (function () {
-  let projects = {};
-
-  function create(name, description = `What's this about?`, list = {}) {
-    projects[name] = { description, list };
-    storage.saveProjects(projects);
-  }
-
-  function updateKey(oldKey, newKey) {
-    if (projects[oldKey] && !projects[newKey]) {
-      projects[newKey] = projects[oldKey];
-      delete projects[oldKey];
-      storage.saveProjects(projects);
-      return true;
-    }
-    return false;
-  }
-
-  function updateTodoKey(project, oldKey, newKey) {
-    if (projects[project].list[oldKey] && !projects[project].list[newKey]) {
-      projects[project].list[newKey] = projects[project].list[oldKey];
-      delete projects[project].list[oldKey];
-      storage.saveProjects(projects);
-      return true;
-    }
-    return false;
-  }
-
-  function isValidDate(date) {
-    return !isNaN(new Date(date).getTime());
-  }
-
-  function addTodo(project, name, dueDate, priority, notes) {
-    if (projects[project].list[name]) return false;
-
-    projects[project].list[name] = {
-      dueDate: isValidDate(dueDate) ? format(new Date(dueDate), 'MMMM do, yyyy') : '',
-      notes,
-      priority,
-      done: false
-    };
-    storage.saveProjects(projects);
-    return true;
-  }
-
-  function updateProperty(project, propertyname, newInfo) {
-    projects[project][propertyname] = newInfo;
-    storage.saveProjects(projects);
-  }
-
-  function updateTodo(project, todo, propertyname, data) {
-    projects[project].list[todo][propertyname] = data;
-    storage.saveProjects(projects);
-  }
-
-  function deleteProject(project) {
-    delete projects[project];
-    if (Object.keys(projects).length === 0) {
-      create('Default', `What's this about?`);
-    }
-    storage.saveProjects(projects);
-  }
-
-  function deleteTodo(project, todo) {
-    delete projects[project].list[todo];
-    storage.saveProjects(projects);
-  }
-
-  function getProjects() {
-    return { ...projects };
-  }
-
-  return {
-    create,
-    updateKey,
-    updateTodoKey,
-    addTodo,
-    updateProperty,
-    deleteProject,
-    deleteTodo,
-    getProjects,
-    updateTodo
-  };
-})();
-
-// ---------------- DOM References ----------------
-const projectList       = document.querySelector('.project-list');
-const newProjectInput   = document.getElementById('new-project-input');
-const addProjectBtn     = document.getElementById('add-project-btn');
-const contentSection    = document.querySelector('.description');
-const titleHeader       = document.querySelector('.title');
-const todoTitleInput    = document.getElementById('todo_name');
-const todoDateInput     = document.getElementById('date');
-const todoPriorityInput = document.getElementById('priority');
-const addTodoBtn        = document.getElementById('add_todo');
-
-// ---------------- Load and Initialize ----------------
-storage.loadProjects();
-
-if (Object.keys(createProject.getProjects()).length === 0) {
-  createProject.create('Default', 'What`s this about?');
 }
 
-if (todoDateInput) {
-  todoDateInput.min = new Date().toISOString().split("T")[0];
+function checkGameEnd() {
+  if (isGameOver) return;
+
+  if (player1.Gameboard.lostShips === 5) {
+    isGameOver = true;
+    gameEnd(player2, '.board-container:first-child');
+  } else if (player2.Gameboard.lostShips === 5) {
+    isGameOver = true;
+    gameEnd(player1, '.board-container:last-child');
+  }
 }
 
-// ---------------- Helpers ----------------
-function makeDescEditable(descEl, key) {
-  descEl.addEventListener('click', () => {
-    // Create textarea and copy styles/sizing
-    const textarea = document.createElement('textarea');
-    textarea.value = descEl.textContent.trim();
+function game() {
+  if (isGameOver) return;
 
-    // Match styles to prevent layout shift
-    const style = window.getComputedStyle(descEl);
-    textarea.style.width = style.width;
-    textarea.style.height = style.height;
-    textarea.style.fontSize = style.fontSize;
-    textarea.style.fontFamily = style.fontFamily;
-    textarea.style.lineHeight = style.lineHeight;
-    textarea.style.padding = style.padding;
-    textarea.style.borderRadius = style.borderRadius;
-    textarea.style.border = style.border;
-    textarea.style.resize = 'none';
-    textarea.style.boxSizing = 'border-box';
-
-    // Replace descEl with textarea and focus
-    descEl.replaceWith(textarea);
-    textarea.focus();
-
-    function saveAndRender() {
-      const newDesc = textarea.value.trim() || `What's this about?`;
-
-      // Replace textarea back with descEl
-      descEl.textContent = newDesc;
-      textarea.replaceWith(descEl);
-
-      // Update storage/project description
-      createProject.updateProperty(key, 'description', newDesc);
-    }
-
-    textarea.addEventListener('blur', saveAndRender);
-    textarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        textarea.blur();
-      }
+  if (player1.turn) {
+    inputs.innerHTML=`${player1.name}'s turn`;
+    const enemyButtons = document.querySelectorAll('.p2');
+    enemyButtons.forEach(btn => {
+      btn.disabled = btn.classList.contains('hit') || btn.classList.contains('miss');
+      btn.style.cursor=btn.disabled?btn.style.cursor:'pointer';
+      btn.classList.add('not-my-turn');
     });
-  });
-}
-
-
-function makeNoteEditable(noteEl, projectKey, todoKey) {
-  noteEl.addEventListener('click', () => {
-    const ta = document.createElement('textarea');
-    ta.className = 'note-editor';
-    ta.value = createProject.getProjects()[projectKey].list[todoKey].notes || '';
-    noteEl.replaceWith(ta);
-    ta.focus();
-
-    let saved = false; // guard to prevent multiple saves
-
-    const save = () => {
-      if (saved) return;
-      saved = true;
-
-      const txt = ta.value.trim();
-      createProject.updateTodo(projectKey, todoKey, 'notes', txt);
-      ta.replaceWith(noteEl);
-      noteEl.textContent = txt || 'Click to add notes…';
-    };
-
-    ta.addEventListener('blur', save);
-    ta.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        save();
-      }
-    });
-  });
-}
-
-function renderProjects() {
-  const projects = createProject.getProjects();
-  projectList.innerHTML = '';
-
-  Object.keys(projects).forEach((key) => {
-    const project = projects[key];
-
-    const li = document.createElement('li');
-
-    const btn = document.createElement('button');
-    btn.className = 'project-name-btn';
-    btn.innerHTML = `
-      <span class="project-name-text">${key}</span>
-      <svg class="edit-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
-      </svg>
-      <svg class="delete-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z M15.5,4L14.5,3H9.5L8.5,4H5V6H19V4Z" />
-      </svg>
-    `;
-
-    // Edit project name
-    btn.querySelector('.edit-icon').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = key;
-      input.className = 'project-rename-input';
-      li.innerHTML = '';
-      li.appendChild(input);
-      input.focus();
-
-      const save = () => {
-        const newKey = input.value.trim();
-        if (!newKey || newKey === key) return renderProjects();
-        createProject.updateKey(key, newKey);
-        titleHeader.textContent = newKey;
-        renderProjects();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') save();
+    if(multi){
+      const myButtons = document.querySelectorAll('.p1');
+      myButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.cursor='not-allowed';
+        btn.classList.remove('not-my-turn');
       });
-      input.addEventListener('blur', save);
-    });
+    }
+    
+  } 
+  else {
+    if(!multi){
+      inputs.innerHTML=`${player2.name}'s turn`;
+      const myButtons = document.querySelectorAll('.p1');
+      myButtons.forEach(btn => btn.disabled = true);
 
-    // Delete project
-    btn.querySelector('.delete-icon').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const wasActive = titleHeader.textContent === key;
+      setTimeout(() => {
+        if (isGameOver) return;
 
-      createProject.deleteProject(key);
-      renderProjects();
+        pcAttack();
+        checkGameEnd(); 
+        if (!isGameOver) {
+          switchTurn();
+        };
+        game();
+      }, 500); 
+    } 
+    else {
+      inputs.innerHTML=`${player2.name}'s turn`;
+      const enemyButtons = document.querySelectorAll('.p1');
+      enemyButtons.forEach(btn => {
+        btn.disabled = btn.classList.contains('hit') || btn.classList.contains('miss');
+        btn.style.cursor=btn.disabled?'not-allowed':'pointer';
+        btn.classList.add('not-my-turn');
+      });
+      const myButtons = document.querySelectorAll('.p2');
+      myButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.cursor='not-allowed';
+        btn.classList.remove('not-my-turn');
+      });
+    }
+  }
+}
 
-      const projects = createProject.getProjects();
-      const remainingKeys = Object.keys(projects);
+function switchTurn(){
+  player2.switchTurn();
+  player1.switchTurn();
+}
 
-      if (wasActive && remainingKeys.length > 0) {
-        const nextKey = remainingKeys[0];
-        titleHeader.textContent = nextKey;
+function pcAttack() {
+  let attacked = false;
 
-        contentSection.innerHTML = `
-          <h3>Description</h3>
-          <p id="project-description" class="editable">${projects[nextKey].description}</p>
-        `;
-        const descEl = document.getElementById('project-description');
-        makeDescEditable(descEl, nextKey);
-        renderTodos(nextKey);
+  while (!attacked) {
+    const x = Math.floor(Math.random() * 10);
+    const y = Math.floor(Math.random() * 10);
+
+    const btn = document.querySelector(`.board .p1[data-x="${x}"][data-y="${y}"]`);
+
+    if (!btn.classList.contains("hit") && !btn.classList.contains("miss")) {
+      if (player1.Gameboard.receiveAttack(x, y)) {
+        btn.classList.add("hit");
       } else {
-        titleHeader.textContent = '';
-        contentSection.innerHTML = '';
+        btn.classList.add("miss");
       }
-    });
+      btn.disabled = true;
+      attacked = true;
+    }
+  }
 
-    // Select project on click
-    btn.addEventListener('click', () => {
-      titleHeader.textContent = key;
-      localStorage.setItem('lastProject', key);
+}
 
-      contentSection.innerHTML = `
-        <h3>Description</h3>
-        <p id="project-description" class="editable">${project.description}</p>
-      `;
-      makeDescEditable(document.getElementById('project-description'), key);
-      renderTodos(key);
-    });
+function placeEnemyShips() {
+  for (let ship of [{name:'Carrier'   ,length:5},
+                    {name:'BattleShip',length:4},
+                    {name:'Destroyer' ,length:3},
+                    {name:'Submarine' ,length:3},
+                    {name:'Patrolboat',length:2}]) {
 
-    li.appendChild(btn);
-    projectList.appendChild(li);
+    let placed = false;
+
+    while (!placed) {
+      const axis = Math.random() < 0.5 ? "X" : "Y";
+      const x = Math.floor(Math.random() * 10);
+      const y = Math.floor(Math.random() * 10);
+
+      if (player2.Gameboard.placeShip(x,y,ship,axis)) {
+        placed = true;
+      }
+    }
+  }
+  game();
+}
+
+function pcBoard(){
+  // --- Friendly Board Container (already exists) ---
+  const friendlyContainer = document.querySelector('.board-container');
+
+  // Create Friendly title
+  const friendlyTitle = document.createElement('div');
+  friendlyTitle.className='title';
+  friendlyTitle.textContent = `${player1.name}'s Map`;
+  friendlyContainer.prepend(friendlyTitle);
+
+  // --- Enemy Board Container ---
+  const enemyContainer = document.createElement('div');
+  enemyContainer.className = 'board-container'; 
+
+  // Create Enemy title
+  const enemyTitle = document.createElement('div');
+  enemyTitle.className='title';
+  enemyTitle.textContent = `${player2.name}'s Map`;
+  enemyContainer.appendChild(enemyTitle);
+
+  // Create Enemy board
+  const board2 = document.createElement('div');
+  board2.className = 'board';
+  enemyContainer.appendChild(board2);
+
+  // Append enemy container to fightDiv
+  fightDiv.appendChild(enemyContainer);
+
+  for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        const button = document.createElement('button');
+        button.className='p2';
+        button.setAttribute('data-x', x);
+        button.setAttribute('data-y', y);
+        button.addEventListener('click', () => {
+          const x = Number(button.dataset.x);
+          const y = Number(button.dataset.y);
+
+          if (player2.Gameboard.receiveAttack(x, y)) {
+            button.classList.add("hit");
+          } else {
+            button.classList.add("miss");
+          }
+
+          document.querySelectorAll('.p2').forEach(btn => {  
+            btn.disabled = true;
+            btn.style.cursor='not-allowed';
+          });
+
+          checkGameEnd();
+          if (!isGameOver) {
+            switchTurn();
+            game();
+          }
+        });
+        board2.appendChild(button);
+      }
+  }
+  placeEnemyShips();
+}
+
+function toggleBtns(axis, x, y, length) {
+  let buttons = [];
+
+  if (axis === "Axis X") {
+    if (y + length - 1 > 9) return null;
+
+    for (let i = 0; i < length; i++) {
+      const btn = document.querySelector(
+        `button[data-x="${x}"][data-y="${y+i}"]`
+      );
+      if (!btn || btn.classList.contains("placed-ship")) {
+        return null; 
+      }
+      buttons.push(btn);
+    }
+  } else {
+    if (x + length - 1 > 9) return null;
+
+    for (let i = 0; i < length; i++) {
+      const btn = document.querySelector(
+        `button[data-x="${x+i}"][data-y="${y}"]`
+      );
+      if (!btn || btn.classList.contains("placed-ship")) {
+        return null; 
+      }
+      buttons.push(btn);
+    }
+  }
+
+  buttons.forEach(btn => btn.classList.toggle("button-hover"));
+  return true;
+}
+
+function createPlayerBoard(player){
+  for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        const button = document.createElement('button');
+        button.className=player===player1?'p1':'p2';
+        button.setAttribute('data-x', x);
+        button.setAttribute('data-y', y);
+
+        const handleMouse=(e)=>{
+          const x = Number(e.currentTarget.dataset.x);
+          const y = Number(e.currentTarget.dataset.y);
+          if(!toggleBtns(axisBtn.textContent,x,y,ship)){
+            if(e.type==='dragleave' )
+              e.currentTarget.classList.remove('invalid-hover');
+            else
+              e.currentTarget.classList.add('invalid-hover');
+        }};
+        
+        button.addEventListener('dragenter',handleMouse);
+        button.addEventListener('dragover',e=>e.preventDefault());
+        button.addEventListener('dragleave',handleMouse);
+        button.addEventListener('drop',(e)=>{
+          if(!button.classList.contains('invalid-hover')){
+            e.preventDefault();
+            document.querySelector(`.items.${shipName}`)?.remove();
+            const x=Number(button.dataset.x);
+            const y=Number(button.dataset.y);
+            const valid = toggleBtns(axisBtn.textContent, x, y, ship);
+
+            if (!valid) {
+              return; 
+            }
+
+            const shipPlaced=(btn)=>{
+              btn.disabled=true;
+              btn.classList.remove('button-hover');
+              btn.classList.add('placed-ship');
+            };
+
+            if(axisBtn.textContent==='Axis X'){
+              for(let i=0;i<ship;i++){
+                const btn = document.querySelector(`button[data-x="${x}"][data-y="${y+i}"]`);
+                shipPlaced(btn);
+              }
+            } else {
+              for(let i=0;i<ship;i++){
+                const btn = document.querySelector(`button[data-x="${x+i}"][data-y="${y}"]`);
+                shipPlaced(btn);
+            }}
+            
+            player.Gameboard.placeShip(x,y,ship,axisBtn.textContent[axisBtn.textContent.length-1])
+            
+            if(document.querySelectorAll('.items').length===0){
+              inputs.innerHTML=`Moving into Positions General ${name.value}`;
+              const allButtons = board.querySelectorAll("button");
+              if(player===player2){allButtons.forEach(btn => {
+                const clone=btn.cloneNode(true);
+                if(multi){
+                  clone.addEventListener('click',()=>{
+                    const x = Number(btn.dataset.x);
+                    const y = Number(btn.dataset.y);
+                    if (player.Gameboard.receiveAttack(x, y)) {
+                      clone.classList.add("hit");       
+                    } else {
+                      clone.classList.add("miss");     
+                    }
+                    clone.disabled = true; 
+                    checkGameEnd();
+                    if(!isGameOver){
+                      setTimeout(()=>{
+                        switchTurn();
+                        game();
+                      },2000)}
+                  });
+                } else{
+                  clone.style.cursor='not-allowed'
+                }
+                btn.replaceWith(clone);
+              });}
+              if(!multi){
+                pcBoard(); 
+              } 
+              else{
+                const nxtBtn=document.createElement('button');
+                nxtBtn.id='nxt'
+                nxtBtn.textContent='Next';
+                document.querySelectorAll('.p1').forEach(btn=>btn.disabled=true);
+                if(player===player1){
+                  nxtBtn.addEventListener('click',()=>{
+                    document.querySelectorAll('.p1').forEach(btn=>btn.disabled=false);
+                    nxtBtn.remove();
+                    const friendlyTitle = document.createElement('div');
+                    friendlyTitle.className='title';
+                    friendlyTitle.textContent = `${player1.name}'s Map`;
+                    boardContainer.prepend(friendlyTitle);
+                    boardCopy=boardContainer.cloneNode(true);
+                    board.innerHTML='';
+                    friendlyTitle.remove();
+                    startPage(true);
+                  });
+                  boardContainer.appendChild(nxtBtn);
+                } 
+                else{
+                  document.querySelectorAll('.p2').forEach(btn=>btn.disabled=true);
+                  setTimeout(() => {
+                    document.querySelectorAll('.p2').forEach(btn=>btn.disabled=false);
+                    const friendlyTitle = document.createElement('div');
+                    friendlyTitle.className='title';
+                    friendlyTitle.textContent = `${player2.name}'s Map`;
+                    boardContainer.prepend(friendlyTitle);
+                    fightDiv.prepend(boardCopy);
+                    document.querySelectorAll('.p1').forEach(btn => {
+                      btn.addEventListener('click',()=>{
+                        const x = Number(btn.dataset.x);
+                        const y = Number(btn.dataset.y);
+                        if (player1.Gameboard.receiveAttack(x, y)) {
+                          btn.classList.add("hit");       
+                        } else {
+                          btn.classList.add("miss");     
+                        }
+                        btn.disabled = true; 
+                        checkGameEnd();
+                        if(!isGameOver){
+                          setTimeout(()=>{
+                            switchTurn();
+                            game();
+                          },2000)}
+                      })});
+                    game();
+                  }, 1000);
+                }
+              }
+            } 
+        }
+        button.classList.remove('invalid-hover');
+        ship = null;
+        shipName=null;})
+        board.appendChild(button);
+
+      }
+    }
+    
+}
+
+function startPage(nxt){
+
+  inputs.innerHTML=`<div><input type="text" id="player" placeholder="Player Name" /></div>
+                         <button id="startBtn">Place Ships</button>`;
+  startBtn=document.querySelector('#startBtn');
+  inputDiv=document.querySelector('.player-inputs div');
+  name=document.querySelector('#player');
+  name.addEventListener('input', () => {
+    name.setCustomValidity('');
   });
-}
+  startBtn.addEventListener('click',()=>{
+    if(name.value===''){
+      name.setCustomValidity('Enter a Valid Name');
+      name.reportValidity();
+    } 
+    else{
+      const dragNdrop=document.createElement('div');
+      dragNdrop.innerHTML=`
+        <div class="items Carrier" draggable=true>Carrier</div>
+        <div class="items Battleship" draggable=true>Battleship</div>
+        <div class="items Destroyer" draggable=true>Destroyer</div>
+        <div class="items Submarine" draggable=true>Submarine</div>
+        <div class="items Patrolboat" draggable=true>Patrolboat</div>`
 
-// ---------------- Render Todos ----------------
-function renderTodos(projectKey) {
-  const project = createProject.getProjects()[projectKey];
-  let todoList = contentSection.querySelector('.todo-list');
+      dragNdrop.classList.add('selectables');
+      inputs.replaceChild(dragNdrop,inputs.firstChild);
+      document.querySelectorAll('.items').forEach(item=>{
+        item.addEventListener('dragstart',()=>{
+          shipName=item.classList[1];
+          ship=army[shipName];
+        })
+      })
+      axisBtn=startBtn.cloneNode(true);
+      startBtn.replaceWith(axisBtn);
+      axisBtn.id='';
+      axisBtn.textContent='Axis X';
+      axisBtn.addEventListener('click',()=>{
+        axisBtn.textContent=axisBtn.textContent==='Axis X'?'Axis Y':'Axis X';
+      })
+      if(!nxt){
+        player1 = new Player(name.value,true);
+        window.p1=player1;
+        createPlayerBoard(player1);
+      } else{
+        player2 = new Player(name.value,false);
+        window.p2=player2;
+        createPlayerBoard(player2);
+      }
+    }
+})
+};
 
-  if (!todoList) {
-    todoList = document.createElement('ul');
-    todoList.className = 'todo-list';
-    contentSection.appendChild(todoList);
-  }
 
-  todoList.innerHTML = '';
+single.addEventListener('click',()=>{
+  multi=0;
+  player2=new Player('Enemy',false);
 
-  for (const [title, todo] of Object.entries(project.list)) {
-    const li = document.createElement('li');
-    li.className = `todo-item priority-${todo.priority.toLowerCase()}`;
+window.p2=player2;
+  startPage(false);
 
-    li.innerHTML = `
-      <div class="todo-line">
-        <div class="todo-title-group">
-          <span class="todo-title">${title}</span>
-          <span class="todo-date small-date">${todo.dueDate}</span>
-        </div>
-      </div>
-      <div class="todo-details hidden">
-        <div class="expanded-date-wrapper">
-          <p class="expanded-date"><strong>Due:</strong> <span class="due-text">${todo.dueDate}</span></p>
-          <button class="date-edit-btn" title="Edit Due Date">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="16" height="16" fill="currentColor">
-        <path d="M19 20H3V19H2V3H3V2H5V0H7V2H15V0H17V2H19V3H20V19H19V20M4 4V6H18V4H4M4 8V18H18V8H4M12 12H16V16H12V12Z"/>
-      </svg>
-    </button>
-        </div>
-        <label><strong>Priority:</strong> 
-          <select class="priority-select">
-            <option value="Low" ${todo.priority === 'Low' ? 'selected' : ''}>Low</option>
-            <option value="Medium" ${todo.priority === 'Medium' ? 'selected' : ''}>Medium</option>
-            <option value="High" ${todo.priority === 'High' ? 'selected' : ''}>High</option>
-          </select>
-        </label>
-        <h3><strong>Notes</h3>
-        <p class="todo-note editable">${todo.notes || 'Click to add notes…'}</p>
-      </div>
-    `;
+})
 
-    // Toggle show/hide
-    li.querySelector('.todo-line').addEventListener('click', () => {
-      li.querySelector('.todo-details').classList.toggle('hidden');
-    });
+double.addEventListener('click',()=>{
+  multi=1;
+  startPage(false);
+})
 
-    // Editable note
-    makeNoteEditable(li.querySelector('.todo-note'), projectKey, title);
 
-    // Priority change
-    li.querySelector('.priority-select').addEventListener('change', (e) => {
-      const newPriority = e.target.value;
-      createProject.updateTodo(projectKey, title, 'priority', newPriority);
-      li.className = `todo-item priority-${newPriority.toLowerCase()}`;
-    });
 
-    // Date edit
-    li.querySelector('.date-edit-btn').addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'date';
-      input.className = 'date-inline-input';
-      input.min = new Date().toISOString().split("T")[0];
 
-      const wrapper = li.querySelector('.expanded-date-wrapper');
-      wrapper.appendChild(input);
-      input.focus();
 
-      const save = () => {
-        if (!input.value) {
-          wrapper.removeChild(input);
-          return;
-        }
-
-        const selectedDate = new Date(input.value);
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-
-        if (selectedDate < now) {
-          alert("You can't set a due date in the past.");
-          wrapper.removeChild(input);
-          return;
-        }
-
-        const formatted = format(selectedDate, 'MMMM do, yyyy');
-        createProject.updateTodo(projectKey, title, 'dueDate', formatted);
-        li.querySelector('.todo-date').textContent = formatted;
-        li.querySelector('.due-text').textContent = formatted;
-        wrapper.removeChild(input);
-      };
-
-      input.addEventListener('change', save);
-      input.addEventListener('blur', save);
-    });
-
-    todoList.appendChild(li);
-  }
-}
-
-// ---------------- UI Events ----------------
-addProjectBtn.addEventListener('click', () => {
-  const name = newProjectInput.value.trim();
-  if (!name) return;
-  createProject.create(name);
-  newProjectInput.value = '';
-  renderProjects();
-});
-
-newProjectInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addProjectBtn.click();
-});
-
-addTodoBtn.addEventListener('click', () => {
-  const title = todoTitleInput.value.trim();
-  const date  = todoDateInput.value;
-  const prio  = todoPriorityInput.value;
-  const key   = titleHeader.textContent;
-
-  if (!title || !date || !prio || !key) return;
-
-  if (createProject.addTodo(key, title, date, prio, '')) {
-    todoTitleInput.value = '';
-    todoDateInput.value = '';
-    todoPriorityInput.value = '';
-    renderTodos(key);
-  }
-});
-
-// ---------------- Final Render ----------------
-function renderProjectsAndSelectLast() {
-  renderProjects();
-  const last = localStorage.getItem('lastProject');
-  const keys = Object.keys(createProject.getProjects());
-
-  if (last && keys.includes(last)) {
-    document.querySelectorAll('.project-name-btn').forEach(btn => {
-      if (btn.textContent.includes(last)) btn.click();
-    });
-  } else if (keys.length > 0) {
-    document.querySelector('.project-name-btn')?.click();
-  }
-}
-
-renderProjectsAndSelectLast();
