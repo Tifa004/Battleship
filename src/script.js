@@ -151,7 +151,7 @@ function placeEnemyShips() {
       const x = Math.floor(Math.random() * 10);
       const y = Math.floor(Math.random() * 10);
 
-      if (player2.Gameboard.placeShip(x,y,ship,axis)) {
+      if (player2.Gameboard.placeShip(x,y,ship.length,axis)) {
         placed = true;
       }
     }
